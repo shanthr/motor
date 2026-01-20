@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ESP32 Motor Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f4f4f4;
+    }
+
+    .motor-container {
+      margin: 40px auto;
+      width: 150px;
+      height: 150px;
+    }
+
+    .motor {
+      width: 150px;
+      height: 150px;
+      border: 10px solid #333;
+      border-top: 10px solid #4CAF50;
+      border-radius: 50%;
+      animation: rotate 1s linear infinite;
+      animation-play-state: paused;
+    }
+
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    button {
+      padding: 12px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>ESP32 Motor Control</h2>
+
+  <div class="motor-container">
+    <div id="motor" class="motor"></div>
+  </div>
+
+  <button onclick="startMotor()">ON</button>
+  <button onclick="stopMotor()">STOP</button>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    // 🔥 Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBwFxRZ_JWBVkTRoP1nYsLPQuzfw2XEWnA",
+      databaseURL: "https://esp-firebase-demo-42-default-rtdb.firebaseio.com/"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    const motor = document.getElementById("motor");
+
+    function startMotor() {
+      motor.style.animationPlayState = "running";
+      database.ref("motor/state").set("ON");
+    }
+
+    function stopMotor() {
+      motor.style.animationPlayState = "paused";
+      database.ref("motor/state").set("OFF");
+    }
+  </script>
+</body>
+</html>
