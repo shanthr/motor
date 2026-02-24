@@ -1,147 +1,122 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>ESP32 Motor Control</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motor + Water Level</title>
 
   <style>
     body {
-      font-family: Arial, sans-serif;
       background: #1e1e1e;
       color: white;
       text-align: center;
+      font-family: Arial;
     }
 
-    /* -------- MOTOR BODY -------- */
-    .motor-wrapper {
-      margin: 50px auto;
-      width: 300px;
-      height: 180px;
-      position: relative;
-    }
-
-    .motor-body {
-      width: 260px;
-      height: 140px;
-      background: linear-gradient(145deg, #555, #222);
-      border-radius: 20px;
-      position: absolute;
-      left: 0;
-      top: 20px;
-      box-shadow: inset 0 0 15px #000;
-    }
-
-    .motor-label {
-      position: absolute;
-      top: 60px;
-      left: 60px;
-      font-size: 14px;
-      opacity: 0.7;
-    }
-
-    /* -------- SHAFT -------- */
-    .shaft {
-      position: absolute;
-      right: 10px;
-      top: 80px;
-      width: 80px;
-      height: 6px;
-      background: #aaa;
-      border-radius: 3px;
-    }
-
-    /* -------- GEAR -------- */
+    /* MOTOR */
     .gear {
-      position: absolute;
-      right: -25px;
-      top: 60px;
       width: 60px;
       height: 60px;
+      margin: 30px auto;
       border-radius: 50%;
-      background:
-        radial-gradient(circle at center, #bbb 20%, #777 60%, #333 100%);
-      border: 4px solid #444;
-      box-shadow: inset 0 0 10px #000;
+      background: radial-gradient(#bbb, #333);
       animation: spin 1s linear infinite;
       animation-play-state: paused;
-      transition: animation-duration 0.5s ease;
-    }
-
-    /* -------- GEAR TEETH -------- */
-    .gear::before {
-      content: "";
-      position: absolute;
-      inset: -8px;
-      border-radius: 50%;
-      background: repeating-conic-gradient(
-        #666 0deg 10deg,
-        #333 10deg 20deg
-      );
-      mask: radial-gradient(circle, transparent 55%, black 56%);
     }
 
     @keyframes spin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
+      from { transform: rotate(0); }
+      to { transform: rotate(360deg); }
     }
 
-    /* -------- BUTTONS -------- */
-    button {
-      margin: 15px;
-      padding: 12px 22px;
-      font-size: 16px;
-      cursor: pointer;
+    /* TANK */
+    .tank {
+      width: 120px;
+      height: 250px;
+      border: 3px solid #aaa;
+      margin: 20px auto;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .water {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 0%;
+      background: blue;
+      transition: height 0.8s;
+    }
+
+    .percent {
+      font-size: 22px;
     }
   </style>
 </head>
 
 <body>
-  <h2>ESP32 Motor Control</h2>
 
-  <div class="motor-wrapper">
-    <div class="motor-body"></div>
-    <div class="motor-label">DC MOTOR</div>
-    <div class="shaft"></div>
-    <div id="gear" class="gear"></div>
-  </div>
+<h2>Motor + Water Monitor</h2>
 
-  <button onclick="motorOn()">ON</button>
-  <button onclick="motorOff()">STOP</button>
+<div id="gear" class="gear"></div>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<button onclick="motorOn()">ON</button>
+<button onclick="motorOff()">STOP</button>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBwFxRZ_JWBVkTRoP1nYsLPQuzfw2XEWnA",
-      databaseURL: "https://esp-firebase-demo-42-default-rtdb.firebaseio.com/"
-    };
+<div class="tank">
+  <div id="water" class="water"></div>
+</div>
 
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
+<div id="percent" class="percent">0%</div>
 
-    const gear = document.getElementById("gear");
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-    function motorOn() {
-      gear.style.animationPlayState = "running";
-      gear.style.animationDuration = "0.6s"; // speed up
-      database.ref("motor/state").set("ON");
-    }
+<script>
+const config = {
+  apiKey: "AIzaSyBwFxRZ_JWBVkTRoP1nYsLPQuzfw2XEWnA",
+  databaseURL: "https://esp-firebase-demo-42-default-rtdb.firebaseio.com/"
+};
 
-    function motorOff() {
-      gear.style.animationDuration = "1.5s"; // slow down
-      setTimeout(() => {
-        gear.style.animationPlayState = "paused";
-      }, 500);
-      database.ref("motor/state").set("OFF");
-    }
+firebase.initializeApp(config);
+const db = firebase.database();
 
-    // 🔁 Sync UI with Firebase (recommended)
-    database.ref("motor/state").on("value", snap => {
-      if (snap.val() === "ON") motorOn();
-      else motorOff();
-    });
-  </script>
+const gear = document.getElementById("gear");
+const water = document.getElementById("water");
+const percent = document.getElementById("percent");
+
+// MOTOR CONTROL
+function motorOn() {
+  db.ref("motor/state").set("ON");
+}
+
+function motorOff() {
+  db.ref("motor/state").set("OFF");
+}
+
+// MOTOR SYNC
+db.ref("motor/state").on("value", snap => {
+  if (snap.val() === "ON") {
+    gear.style.animationPlayState = "running";
+  } else {
+    gear.style.animationPlayState = "paused";
+  }
+});
+
+// WATER LEVEL SYNC
+db.ref("water/percentage").on("value", snap => {
+  let val = snap.val();
+  if (val == null) return;
+
+  val = Math.round(val);
+
+  water.style.height = val + "%";
+  percent.innerText = val + "%";
+
+  // COLOR LOGIC
+  if (val < 20) water.style.background = "red";
+  else if (val < 50) water.style.background = "orange";
+  else water.style.background = "blue";
+});
+</script>
+
 </body>
 </html>
