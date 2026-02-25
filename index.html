@@ -11,42 +11,51 @@
       font-family: Arial;
     }
 
-    /* FAN */
-    .fan {
-      width: 80px;
-      height: 80px;
-      margin: 30px auto;
-      position: relative;
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-      animation-play-state: paused;
+    /* MAIN ROW LAYOUT */
+    .system {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 40px;
+      margin-top: 30px;
     }
 
-    /* FAN BLADES */
-    .fan::before, .fan::after {
-      content: "";
-      position: absolute;
-      background: #ccc;
-      border-radius: 50%;
+    /* MOTOR */
+    .motor-container video,
+    .motor-container img {
+      width: 180px;
+      border-radius: 10px;
     }
 
-    .fan::before {
-      width: 20px;
-      height: 60px;
-      top: 10px;
-      left: 30px;
-    }
-
-    .fan::after {
-      width: 60px;
+    /* PIPE */
+    .pipe {
+      width: 120px;
       height: 20px;
-      top: 30px;
-      left: 10px;
+      background: #555;
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
     }
 
-    @keyframes spin {
-      from { transform: rotate(0); }
-      to { transform: rotate(360deg); }
+    /* FLOW ANIMATION */
+    .flow {
+      position: absolute;
+      width: 200%;
+      height: 100%;
+      background: repeating-linear-gradient(
+        90deg,
+        #00bfff 0px,
+        #00bfff 10px,
+        #0077ff 10px,
+        #0077ff 20px
+      );
+      animation: flowAnim 1s linear infinite;
+      display: none;
+    }
+
+    @keyframes flowAnim {
+      from { transform: translateX(-50%); }
+      to { transform: translateX(0%); }
     }
 
     /* TANK */
@@ -54,7 +63,6 @@
       width: 120px;
       height: 250px;
       border: 3px solid #aaa;
-      margin: 20px auto;
       position: relative;
       overflow: hidden;
     }
@@ -70,6 +78,13 @@
 
     .percent {
       font-size: 22px;
+      margin-top: 10px;
+    }
+
+    button {
+      margin: 5px;
+      padding: 6px 12px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -78,16 +93,35 @@
 
 <h2>Motor + Water Monitor</h2>
 
-<div id="gear" class="fan"></div>
-
-<button onclick="motorOn()">START</button>
-<button onclick="motorOff()">STOP</button>
-
-<div class="tank">
-  <div id="water" class="water"></div>
+<div>
+  <button onclick="motorOn()">START</button>
+  <button onclick="motorOff()">STOP</button>
 </div>
 
-<div id="percent" class="percent">0%</div>
+<div class="system">
+
+  <!-- MOTOR -->
+  <div class="motor-container">
+    <video id="motorVideo" loop muted style="display:none;">
+      <source src="motor_on.mp4" type="video/mp4">
+    </video>
+    <img id="motorImage" src="motor_off.png">
+  </div>
+
+  <!-- PIPE -->
+  <div class="pipe">
+    <div id="flow" class="flow"></div>
+  </div>
+
+  <!-- TANK -->
+  <div>
+    <div class="tank">
+      <div id="water" class="water"></div>
+    </div>
+    <div id="percent" class="percent">0%</div>
+  </div>
+
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -101,7 +135,10 @@ const config = {
 firebase.initializeApp(config);
 const db = firebase.database();
 
-const gear = document.getElementById("gear");
+const video = document.getElementById("motorVideo");
+const image = document.getElementById("motorImage");
+const flow = document.getElementById("flow");
+
 const water = document.getElementById("water");
 const percent = document.getElementById("percent");
 
@@ -114,16 +151,24 @@ function motorOff() {
   db.ref("motor/state").set("OFF");
 }
 
-// MOTOR SYNC
+// MOTOR SYNC + FLOW CONTROL
 db.ref("motor/state").on("value", snap => {
   if (snap.val() === "ON") {
-    gear.style.animationPlayState = "running";
+    image.style.display = "none";
+    video.style.display = "block";
+    video.play();
+
+    flow.style.display = "block"; // START FLOW
   } else {
-    gear.style.animationPlayState = "paused";
+    video.pause();
+    video.style.display = "none";
+    image.style.display = "block";
+
+    flow.style.display = "none"; // STOP FLOW
   }
 });
 
-// WATER LEVEL SYNC (UNCHANGED)
+// WATER LEVEL (UNCHANGED)
 db.ref("water/percentage").on("value", snap => {
   let val = snap.val();
   if (val == null) return;
@@ -133,7 +178,6 @@ db.ref("water/percentage").on("value", snap => {
   water.style.height = val + "%";
   percent.innerText = val + "%";
 
-  // COLOR LOGIC
   if (val < 20) water.style.background = "red";
   else if (val < 50) water.style.background = "orange";
   else water.style.background = "blue";
