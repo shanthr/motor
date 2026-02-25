@@ -18,6 +18,7 @@
       align-items: center;
       gap: 40px;
       margin-top: 30px;
+      flex-wrap: wrap; /* helps on mobile */
     }
 
     /* MOTOR */
@@ -102,7 +103,7 @@
 
   <!-- MOTOR -->
   <div class="motor-container">
-    <video id="motorVideo" loop muted style="display:none;">
+    <video id="motorVideo" loop muted playsinline webkit-playsinline style="display:none;">
       <source src="motor_on.mp4" type="video/mp4">
     </video>
     <img id="motorImage" src="motor_off.png">
@@ -142,6 +143,10 @@ const flow = document.getElementById("flow");
 const water = document.getElementById("water");
 const percent = document.getElementById("percent");
 
+// EXTRA SAFETY FOR MOBILE
+video.setAttribute("playsinline", true);
+video.setAttribute("webkit-playsinline", true);
+
 // MOTOR CONTROL
 function motorOn() {
   db.ref("motor/state").set("ON");
@@ -151,20 +156,20 @@ function motorOff() {
   db.ref("motor/state").set("OFF");
 }
 
-// MOTOR SYNC + FLOW CONTROL
+// MOTOR SYNC + FLOW
 db.ref("motor/state").on("value", snap => {
   if (snap.val() === "ON") {
     image.style.display = "none";
     video.style.display = "block";
     video.play();
 
-    flow.style.display = "block"; // START FLOW
+    flow.style.display = "block";
   } else {
     video.pause();
     video.style.display = "none";
     image.style.display = "block";
 
-    flow.style.display = "none"; // STOP FLOW
+    flow.style.display = "none";
   }
 });
 
