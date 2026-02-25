@@ -11,15 +11,37 @@
       font-family: Arial;
     }
 
-    /* MOTOR */
-    .gear {
-      width: 60px;
-      height: 60px;
+    /* FAN */
+    .fan {
+      width: 80px;
+      height: 80px;
       margin: 30px auto;
+      position: relative;
       border-radius: 50%;
-      background: radial-gradient(#bbb, #333);
-      animation: spin 1s linear infinite;
+      animation: spin 0.6s linear infinite;
       animation-play-state: paused;
+    }
+
+    /* FAN BLADES */
+    .fan::before, .fan::after {
+      content: "";
+      position: absolute;
+      background: #ccc;
+      border-radius: 50%;
+    }
+
+    .fan::before {
+      width: 20px;
+      height: 60px;
+      top: 10px;
+      left: 30px;
+    }
+
+    .fan::after {
+      width: 60px;
+      height: 20px;
+      top: 30px;
+      left: 10px;
     }
 
     @keyframes spin {
@@ -56,9 +78,9 @@
 
 <h2>Motor + Water Monitor</h2>
 
-<div id="gear" class="gear"></div>
+<div id="gear" class="fan"></div>
 
-<button onclick="motorOn()">ON</button>
+<button onclick="motorOn()">START</button>
 <button onclick="motorOff()">STOP</button>
 
 <div class="tank">
@@ -101,7 +123,7 @@ db.ref("motor/state").on("value", snap => {
   }
 });
 
-// WATER LEVEL SYNC
+// WATER LEVEL SYNC (UNCHANGED)
 db.ref("water/percentage").on("value", snap => {
   let val = snap.val();
   if (val == null) return;
