@@ -1,134 +1,192 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Water Pump Controller</title>
+  <title>Motor + Water Level</title>
 
-<meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      background: #1e1e1e;
+      color: white;
+      text-align: center;
+      font-family: Arial;
+    }
 
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    /* MAIN ROW LAYOUT */
+    .system {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 40px;
+      margin-top: 30px;
+      flex-wrap: wrap; /* helps on mobile */
+    }
 
-<style>
+    /* MOTOR */
+    .motor-container video,
+    .motor-container img {
+      width: 180px;
+      border-radius: 10px;
+    }
 
-body{
-font-family: Arial;
-text-align:center;
-background:#111;
-color:white;
-}
+    /* PIPE */
+    .pipe {
+      width: 120px;
+      height: 20px;
+      background: #555;
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+    }
 
-.container{
-margin-top:50px;
-}
+    /* FLOW ANIMATION */
+    .flow {
+      position: absolute;
+      width: 200%;
+      height: 100%;
+      background: repeating-linear-gradient(
+        90deg,
+        #00bfff 0px,
+        #00bfff 10px,
+        #0077ff 10px,
+        #0077ff 20px
+      );
+      animation: flowAnim 1s linear infinite;
+      display: none;
+    }
 
-.level{
-font-size:40px;
-margin:20px;
-}
+    @keyframes flowAnim {
+      from { transform: translateX(-50%); }
+      to { transform: translateX(0%); }
+    }
 
-button{
-font-size:22px;
-padding:15px 40px;
-margin:15px;
-border:none;
-border-radius:10px;
-}
+    /* TANK */
+    .tank {
+      width: 120px;
+      height: 250px;
+      border: 3px solid #aaa;
+      position: relative;
+      overflow: hidden;
+    }
 
-.on{
-background:#2ecc71;
-color:white;
-}
+    .water {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 0%;
+      background: blue;
+      transition: height 0.8s;
+    }
 
-.off{
-background:#e74c3c;
-color:white;
-}
+    .percent {
+      font-size: 22px;
+      margin-top: 10px;
+    }
 
-.status{
-font-size:20px;
-margin-top:20px;
-}
-
-</style>
-
+    button {
+      margin: 5px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 
 <body>
 
-<div class="container">
+<h2>Motor + Water Monitor</h2>
 
-<h1>Water Pump Control</h1>
-
-<div class="level">
-Water Level: <span id="level">--</span> %
+<div>
+  <button onclick="motorOn()">START</button>
+  <button onclick="motorOff()">STOP</button>
 </div>
 
-<button class="on" onclick="motorOn()">Pump ON</button>
-<button class="off" onclick="motorOff()">Pump OFF</button>
+<div class="system">
 
-<div class="status">
-Motor Status: <span id="status">OFF</span>
+  <!-- MOTOR -->
+  <div class="motor-container">
+    <video id="motorVideo" loop muted playsinline webkit-playsinline style="display:none;">
+      <source src="motor_on.mp4" type="video/mp4">
+    </video>
+    <img id="motorImage" src="motor_off.png">
+  </div>
+
+  <!-- PIPE -->
+  <div class="pipe">
+    <div id="flow" class="flow"></div>
+  </div>
+
+  <!-- TANK -->
+  <div>
+    <div class="tank">
+      <div id="water" class="water"></div>
+    </div>
+    <div id="percent" class="percent">0%</div>
+  </div>
+
 </div>
 
-</div>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-
-var firebaseConfig = {
-apiKey: "AIzaSyBwFxRZ_JWBVkTRoP1nYsLPQuzfw2XEWnA",
-databaseURL: "https://esp-firebase-demo-42-default-rtdb.firebaseio.com/"
+const config = {
+  apiKey: "AIzaSyBwFxRZ_JWBVkTRoP1nYsLPQuzfw2XEWnA",
+  databaseURL: "https://esp-firebase-demo-42-default-rtdb.firebaseio.com/"
 };
 
-firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(config);
+const db = firebase.database();
 
-var db = firebase.database();
+const video = document.getElementById("motorVideo");
+const image = document.getElementById("motorImage");
+const flow = document.getElementById("flow");
 
+const water = document.getElementById("water");
+const percent = document.getElementById("percent");
 
-// ----- READ WATER LEVEL -----
+// EXTRA SAFETY FOR MOBILE
+video.setAttribute("playsinline", true);
+video.setAttribute("webkit-playsinline", true);
 
-db.ref("motor/level").on("value", function(snapshot){
-
-var level = snapshot.val();
-
-if(level != null){
-
-document.getElementById("level").innerHTML = level.toFixed(1);
-
+// MOTOR CONTROL
+function motorOn() {
+  db.ref("motor/state").set("ON");
 }
 
+function motorOff() {
+  db.ref("motor/state").set("OFF");
+}
+
+// MOTOR SYNC + FLOW
+db.ref("motor/state").on("value", snap => {
+  if (snap.val() === "ON") {
+    image.style.display = "none";
+    video.style.display = "block";
+    video.play();
+
+    flow.style.display = "block";
+  } else {
+    video.pause();
+    video.style.display = "none";
+    image.style.display = "block";
+
+    flow.style.display = "none";
+  }
 });
 
+// WATER LEVEL (UNCHANGED)
+db.ref("water/percentage").on("value", snap => {
+  let val = snap.val();
+  if (val == null) return;
 
-// ----- READ MOTOR STATUS -----
+  val = Math.round(val);
 
-db.ref("motor/cmd").on("value", function(snapshot){
+  water.style.height = val + "%";
+  percent.innerText = val + "%";
 
-var cmd = snapshot.val();
-
-if(cmd == 1){
-document.getElementById("status").innerHTML = "ON";
-}
-else{
-document.getElementById("status").innerHTML = "OFF";
-}
-
+  if (val < 20) water.style.background = "red";
+  else if (val < 50) water.style.background = "orange";
+  else water.style.background = "blue";
 });
-
-
-// ----- MOTOR CONTROL -----
-
-function motorOn(){
-
-db.ref("motor/cmd").set(1);
-
-}
-
-function motorOff(){
-
-db.ref("motor/cmd").set(0);
-
-}
-
 </script>
 
 </body>
